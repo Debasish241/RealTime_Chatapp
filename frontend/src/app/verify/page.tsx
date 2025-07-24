@@ -1,8 +1,17 @@
 "use client";
-import { ArrowRight, Loader2, Lock, RefreshCw } from "lucide-react";
+import axios from "axios";
+import {
+  ArrowRight,
+  ChevronLeft,
+  Loader2,
+  Lock,
+  RefreshCw,
+} from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useRouter } from "next/router";
+import { useRouter } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
+import Cookies from "js-cookie";
+import { user_service } from "@/context/AppContext";
 
 const VerifyPage = () => {
   const [loading, setLoading] = useState(false);
@@ -10,7 +19,7 @@ const VerifyPage = () => {
   const [error, setError] = useState<string>("");
   const [timer, setTimer] = useState(60);
   const router = useRouter();
-  
+
   const searchParams = useSearchParams();
   const email: string = searchParams.get("email") || "";
 
@@ -58,35 +67,84 @@ const VerifyPage = () => {
 
     setLoading(true);
     setError("");
-    // Simulated API check
-    setTimeout(() => {
-      setLoading(false);
-      if (enteredOtp !== "123456") {
-        setError("Incorrect OTP. Please try again.");
+
+    try {
+      const { data } = await axios.post(`${user_service}/api/v1/verify`, {
+        email,
+        otp: enteredOtp, // Fixed: was using undefined 'otpString'
+      });
+
+      // Success response
+      alert(data.message);
+      Cookies.set("token", data.token, {
+        expires: 15,
+        secure: false,
+        path: "/",
+      });
+      setOtp(Array(6).fill(""));
+      router.push("/dashboard");
+    } catch (error: any) {
+      if (error.response?.data?.message) {
+        setError(error.response.data.message);
       } else {
-        alert("Verified successfully!");
+        setError("Verification failed. Please try again.");
       }
-    }, 1500);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleResend = async () => {
+    if (!email) {
+      setError("Email is required to resend OTP.");
+      return;
+    }
+
     setResendLoading(true);
     setError("");
     setOtp(Array(6).fill(""));
     otpRefs[0].current?.focus();
 
-    // Simulated resend API
-    setTimeout(() => {
-      setResendLoading(false);
+    try {
+      await axios.post(`${user_service}/api/v1/login`, {
+        email,
+      });
+      alert("OTP sent successfully!");
       setTimer(60);
-    }, 2000);
+    } catch (error: any) {
+      if (error.response?.data?.message) {
+        setError(error.response.data.message);
+      } else {
+        setError("Failed to resend OTP. Please try again.");
+      }
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>): void => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData("text");
+    const digits = pastedData.replace(/\D/g, "").slice(0, 6);
+
+    if (digits.length === 6) {
+      const newOtp = digits.split("");
+      setOtp(newOtp);
+      otpRefs[5].current?.focus();
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
         <div className="bg-gray-800 border border-gray-700 rounded-2xl p-8 shadow-lg shadow-blue-900/30">
-          <div className="text-center mb-8">
+          <div className="text-center mb-8 relative">
+            <button
+              className="cursor-pointer absolute top-0 left-0 p-2 text-gray-300 hover:text-white"
+              onClick={() => router.push("/login")}
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
             <div className="mx-auto w-20 h-20 bg-blue-600 rounded-xl flex items-center justify-center shadow-md shadow-blue-500/40 mb-6 transition-transform hover:scale-105">
               <Lock size={40} className="text-white" />
             </div>
@@ -118,6 +176,7 @@ const VerifyPage = () => {
                     value={digit}
                     onChange={(e) => handleChange(idx, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(e, idx)}
+                    onPaste={idx === 0 ? handlePaste : undefined} // Fixed: == to ===
                     className="w-12 h-12 text-center text-white text-xl bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                   />
                 ))}
@@ -156,7 +215,7 @@ const VerifyPage = () => {
                   type="button"
                   onClick={handleResend}
                   disabled={resendLoading}
-                  className="text-blue-400 font-medium flex items-center justify-center gap-2 hover:text-blue-300 transition"
+                  className="text-blue-400 font-medium flex items-center justify-center gap-2 hover:text-blue-300 transition mx-auto"
                 >
                   {resendLoading ? (
                     <>
@@ -173,6 +232,12 @@ const VerifyPage = () => {
               )}
             </div>
           </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-gray-400 text-sm mb-4">
+              Didn't receive the code? {/* Fixed typo: 'recieve' */}
+            </p>
+          </div>
         </div>
       </div>
     </div>
