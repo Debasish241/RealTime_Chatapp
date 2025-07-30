@@ -107,13 +107,65 @@ const chatApp = () => {
     }
   }, [selectedUser]);
 
+  // const handleMessageSend = async (e: any, imageFile?: File | null) => {
+  //   e.preventDefault();
+
+  //   if (!message.trim() && !imageFile) return;
+  //   if (!selectedUser) return;
+
+  //   //socket work
+
+  //   const token = Cookies.get("token");
+
+  //   try {
+  //     const formData = new FormData();
+  //     formData.append("chatId", selectedUser);
+
+  //     if (message.trim()) {
+  //       formData.append("text", message);
+
+  //       if (imageFile) {
+  //         formData.append("image", imageFile);
+  //       }
+
+  //       const { data } = await axios.post(
+  //         `${chat_service}/api/v1/message`,
+  //         formData,
+  //         {
+  //           headers: {
+  //             Authorization: `Bearer ${token}`,
+  //             "Content-Type": "multipart/form-data",
+  //           },
+  //         }
+  //       );
+
+  //       setMessages((prev) => {
+  //         const currentMessages = prev || [];
+  //         const messageExists = currentMessages.some(
+  //           (msg) => msg._id === data.message._id
+  //         );
+
+  //         if (!messageExists) {
+  //           return [...currentMessages, data.message];
+  //         }
+
+  //         return currentMessages;
+  //       });
+
+  //       setMessage("");
+
+  //       const displayText = imageFile ? "📷 image" : message;
+  //     }
+  //   } catch (error: any) {
+  //     toast.error(error.response.data.message);
+  //   }
+  // };
+
   const handleMessageSend = async (e: any, imageFile?: File | null) => {
     e.preventDefault();
 
     if (!message.trim() && !imageFile) return;
     if (!selectedUser) return;
-
-    //socket work
 
     const token = Cookies.get("token");
 
@@ -121,45 +173,48 @@ const chatApp = () => {
       const formData = new FormData();
       formData.append("chatId", selectedUser);
 
+      // Add text if it exists
       if (message.trim()) {
         formData.append("text", message);
+      }
 
-        if (imageFile) {
-          formData.append("image", imageFile);
+      // Add image if it exists
+      if (imageFile) {
+        formData.append("image", imageFile);
+      }
+
+      const { data } = await axios.post(
+        `${chat_service}/api/v1/message`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
         }
+      );
 
-        const { data } = await axios.post(
-          `${chat_service}/api/v1/message`,
-          formData,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "multipart/form-data",
-            },
-          }
+      setMessages((prev) => {
+        const currentMessages = prev || [];
+        const messageExists = currentMessages.some(
+          (msg) => msg._id === data.message._id
         );
 
-        setMessages((prev) => {
-          const currentMessages = prev || [];
-          const messageExists = currentMessages.some(
-            (msg) => msg._id === data.message._id
-          );
+        if (!messageExists) {
+          return [...currentMessages, data.message];
+        }
 
-          if (!messageExists) {
-            return [...currentMessages, data.message];
-          }
+        return currentMessages;
+      });
 
-          return currentMessages;
-        });
+      setMessage("");
 
-        setMessage("");
-
-        const displayText = imageFile ? "📷 image" : message;
-      }
+      const displayText = imageFile ? "📷 image" : message;
     } catch (error: any) {
-      toast.error(error.response.data.message);
+      toast.error(error.response?.data?.message || "Failed to send message");
     }
   };
+
   const handleTyping = (value: string) => {
     setMessage(value);
 

@@ -1,5 +1,5 @@
 import { Loader2, Paperclip, Send, X } from "lucide-react";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 
 interface MessageInputProps {
   selectedUser: string | null;
@@ -16,6 +16,7 @@ const MessageInput = ({
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isUploading, setIsuploading] = useState(false);
 
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     if (!message.trim() && !imageFile) return;
@@ -23,6 +24,10 @@ const MessageInput = ({
     setIsuploading(true);
     await handleMessageSend(e, imageFile);
     setImageFile(null);
+    setMessage("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
     setIsuploading(false);
   };
 
@@ -53,6 +58,7 @@ const MessageInput = ({
         <label className="cursor-pointer bg-gray-700 hover:bg-gray-600 rounded-lg px-3 py-2 transition-colors">
           <Paperclip size={18} className="text-gray-300" />
           <input
+            ref={fileInputRef}
             type="file"
             accept="image/*"
             className="hidden"
@@ -76,7 +82,7 @@ const MessageInput = ({
         <button
           type="submit"
           disabled={(!imageFile && !message) || isUploading}
-          className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors flex items-center gap-1 disabled:opaccity:50 disabled:cursor-not-allowed text-white"
+          className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors flex items-center gap-1 disabled:opaccity-50 disabled:cursor-not-allowed text-white"
         >
           {isUploading ? (
             <Loader2 className="w-4 h-4 animate-spin" />
