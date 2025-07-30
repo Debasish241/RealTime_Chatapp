@@ -1,5 +1,15 @@
 import { User } from "@/context/AppContext";
-import { MessageCircle, Plus, Search, UserCircle, X } from "lucide-react";
+import {
+  CornerDownRight,
+  CornerUpLeft,
+  LogOut,
+  MessageCircle,
+  Plus,
+  Search,
+  UserCircle,
+  X,
+} from "lucide-react";
+import Link from "next/link";
 import React, { useState } from "react";
 
 interface ChatsidebarProps {
@@ -10,7 +20,8 @@ interface ChatsidebarProps {
   users: User[] | null;
   loggedInUser: User | null;
   chats: any[] | null;
-  selectedUser: string;
+  selectedUser: string | null;
+  createChat: (user: User) => void;
   setSelectedUser: (userId: string | null) => void;
   handleLogout: () => void;
 }
@@ -25,9 +36,11 @@ const Chatsidebar = ({
   chats,
   setSelectedUser,
   selectedUser,
+  createChat,
   handleLogout,
 }: ChatsidebarProps) => {
   const [searchQuery, setSearchQuery] = useState("");
+  console.log(users, "chatsidebar");
   return (
     <aside
       className={`fixed z-20 sm:static top-0 left-0 h-screen w-80 bg-gray-900 border-r border-gray-700 transform ${
@@ -55,7 +68,7 @@ const Chatsidebar = ({
             </h2>
           </div>
           <button
-            className={`p-2.5 rounded-lg transition-colors ${
+            className={`p-2.5  rounded-lg transition-colors ${
               showAllUsers
                 ? "bg-red-600 hover:bg-red-700 text-white "
                 : "bg-green-600 hover:bg-green-700 text-white"
@@ -63,7 +76,7 @@ const Chatsidebar = ({
             onClick={() => setShowAllUsers((prev) => !prev)}
           >
             {showAllUsers ? (
-              <X className="w-4 h-4 cursor-pointer" />
+              <X className="w-4 h-4 cursor-pointer items-center justify-center flex" />
             ) : (
               <Plus className="w-4 h-4 cursor-pointer" />
             )}
@@ -96,6 +109,7 @@ const Chatsidebar = ({
                   <button
                     key={u._id}
                     className="w-full text-left p-4 rounded-lg border border-gray-700 hover:border-gray-600 hover:bg-gray-800 transition-colors"
+                    onClick={() => createChat(u)}
                   >
                     <div className="flex items-center gap-3">
                       <div className="relative">
@@ -148,17 +162,36 @@ const Chatsidebar = ({
                       <div className="flex items-center justify-between mb-1">
                         <span
                           className={`font-semibold truncate ${
-                            isSelected ? "rexr-white" : "text-gray-200"
+                            isSelected ? "text-white" : "text-gray-200"
                           }`}
                         >
-                          {chat.user.name}
+                          {chat.user?.name || "Unknown User"}
                         </span>
+
                         {unseenCount > 0 && (
                           <div className="bg-red-600 text-white text-xs font-bold rounded-full min-w-[22px] h-5.5 flex items-center justify-center px-2">
                             {unseenCount > 99 ? "99+" : unseenCount}
                           </div>
                         )}
                       </div>
+                      {latestMessage && (
+                        <div className="flex items-center gap-2 ">
+                          {isSentByMe ? (
+                            <CornerUpLeft
+                              size={14}
+                              className="text-blue-400 text-shrink-0"
+                            />
+                          ) : (
+                            <CornerDownRight
+                              size={14}
+                              className="text-green-400 text-shrink-0"
+                            />
+                          )}
+                          <span className="text-sm text-gray-400 truncate felx-1 ">
+                            {latestMessage.text}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </button>
@@ -166,8 +199,39 @@ const Chatsidebar = ({
             })}
           </div>
         ) : (
-          <div></div>
+          <div className="flex flex-col items-center justify-center h-full text-center ">
+            <div className="p-4 bg-gray-400 rounded-full mb-4">
+              <MessageCircle className="w-8 h-8 text-white" />
+            </div>
+            <p className="text-gray-400 font-medium">No Conversation Yet</p>
+            <p className="text-gray-500 text-sm mt-1 ">
+              Start a new chat to begin messaging
+            </p>
+          </div>
         )}
+      </div>
+
+      {/* {footer} */}
+
+      <div className="border-t border-gray700 space-y-2 p-4 ">
+        <Link
+          href={"/profile"}
+          className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors"
+        >
+          <div className="p-1.5 bg-gray-700 rounded-lg flex">
+            <UserCircle className="w-4 h-4 text-gray-300 " />
+          </div>{" "}
+          <span className="font-medium text-gray-300 ">Profile</span>
+        </Link>{" "}
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-4 py-3 cursor-pointer rounded-lg hover:bg-red-600  transition-colors text-red-500 hover:text-white"
+        >
+          <div className="p-1.5 bg-red-600 rounded-lg flex ">
+            <LogOut className="w-4 h-4 text-gray-300 " />
+          </div>
+          <span className="font-medium">Logout</span>
+        </button>
       </div>
     </aside>
   );

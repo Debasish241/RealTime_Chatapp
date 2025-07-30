@@ -2,7 +2,7 @@ import tryCatch from "../config/tryCatch.js";
 import { AuthenticatedRequest } from "../middlewares/isAuth.js";
 import { Chat } from "../models/chat.js";
 import { Messages } from "../models/messages.js";
-
+import axios from "axios";
 export const createNewChat = tryCatch(
   async (req: AuthenticatedRequest, res) => {
     const userId = req.user?._id;
