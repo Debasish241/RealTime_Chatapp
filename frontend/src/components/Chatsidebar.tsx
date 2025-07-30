@@ -24,11 +24,13 @@ interface ChatsidebarProps {
   createChat: (user: User) => void;
   setSelectedUser: (userId: string | null) => void;
   handleLogout: () => void;
+  onlineUsers: string[];
 }
 
 const Chatsidebar = ({
   sidebarOpen,
   setSidebarOpen,
+  onlineUsers,
   setShowAllUsers,
   showAllUsers,
   users,
@@ -114,14 +116,19 @@ const Chatsidebar = ({
                     <div className="flex items-center gap-3">
                       <div className="relative">
                         <UserCircle className="w-6 h-6 text-gray-300" />
+                        {onlineUsers.includes(u._id) && (
+                          <span className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-green-500 border-2 border-gray-900 "></span>
+                        )}
                       </div>
-                      {/* online symbol */}{" "}
+
                       <div className="flex-1 min-w-0 ">
                         <span className="font-medium text-white ">
                           {u.name}
                         </span>
                         <div className="text-xs text-gray-400 mt-0.5 ">
                           {/* to show onlien offline text */}
+
+                          {onlineUsers.includes(u._id) ? "Online" : "Offline"}
                         </div>
                       </div>
                     </div>
@@ -157,6 +164,9 @@ const Chatsidebar = ({
 
                         {/* online user work */}
                       </div>
+                      {onlineUsers.includes(chat.user?._id) && (
+                        <span className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-green-500 border-2 border-gray-900 "></span>
+                      )}
                     </div>
                     <div className="flex-1 min-w-0 ">
                       <div className="flex items-center justify-between mb-1">
