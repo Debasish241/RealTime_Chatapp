@@ -289,7 +289,9 @@ export const getMessagesByChat = tryCatch(
 
       //socket work
       if (messagesToMarkSeen.length > 0) {
-        const otherUserSocketId = getRecieverSocketId(otherUserId.toString());
+        const otherUserSocketId = otherUserId
+          ? getRecieverSocketId(otherUserId.toString())
+          : undefined;
 
         if (otherUserSocketId) {
           io.to(otherUserSocketId).emit("messagesSeen", {
