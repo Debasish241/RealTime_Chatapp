@@ -82,6 +82,63 @@ const chatApp = () => {
     }
   }
 
+  const moveChatToTop = (
+    chatId: string,
+    newMessage: any,
+    updatedUnseenCount = true
+  ) => {
+    setChats((prev) => {
+      if (!prev) return null;
+
+      const updatedChats = [...prev];
+      const chatIndex = updatedChats.findIndex(
+        (chat) => chat.chat._id === chatId
+      );
+
+      if (chatIndex !== -1) {
+        const [moveChat] = updatedChats.splice(chatIndex, 1);
+
+        const updatedChat = {
+          ...moveChat,
+          chat: {
+            ...moveChat.chat,
+            latestMessage: {
+              text: newMessage.text,
+              sender: newMessage.sender,
+            },
+            updatedAt: new Date().toString(),
+            unseenCount:
+              updatedUnseenCount && newMessage.sender !== loggedInUser?._id
+                ? (moveChat.chat.unseenCount || 0) + 1
+                : moveChat.chat.unseenCount || 0,
+          },
+        };
+
+        updatedChats.unshift(updatedChat);
+      }
+      return updatedChats;
+    });
+  };
+
+  const resetUnseenCount = (chatId: string) => {
+    setChats((prev) => {
+      if (!prev) return null;
+
+      return prev.map((chat) => {
+        if (chat.chat._id === chatId) {
+          return {
+            ...chat,
+            chat: {
+              ...chat.chat,
+              unseenCount: 0,
+            },
+          };
+        }
+        return chat;
+      });
+    });
+  };
+
   async function createChat(u: User) {
     try {
       const token = Cookies.get("token");
@@ -105,6 +162,39 @@ const chatApp = () => {
       toast.error("Failed to start Chat");
     }
   }
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleMessageSeen = ({
+      chatId,
+      seenBy,
+      messageIds,
+    }: {
+      chatId: string;
+      seenBy: string;
+      messageIds?: string[];
+    }) => {
+      if (!messageIds || !Array.isArray(messageIds)) return;
+
+      if (chatId === selectedUser && loggedInUser) {
+        setMessages(
+          (prev) =>
+            prev?.map((msg) =>
+              messageIds.includes(msg._id) && msg.senderId === loggedInUser._id
+                ? { ...msg, seen: true }
+                : msg
+            ) ?? null
+        );
+      }
+    };
+
+    socket.on("messageSeen", handleMessageSeen);
+
+    return () => {
+      socket.off("messageSeen", handleMessageSeen);
+    };
+  }, [socket, selectedUser, loggedInUser]);
 
   useEffect(() => {
     if (selectedUser) {
@@ -157,7 +247,7 @@ const chatApp = () => {
 
         return currentMessages;
       });
-
+      moveChatToTop(data.message.chatId, message, false);
       setMessage("");
 
       const displayText = imageFile ? "📷 image" : message;
@@ -206,10 +296,45 @@ const chatApp = () => {
   };
 
   useEffect(() => {
+    if (!socket) return;
+
+    const handleNewMessage = (message: Message) => {
+      console.log("Received new message:", message);
+      if (selectedUser === message.chatId) {
+        setMessages((prev) => {
+          const currentMessages = prev || [];
+          const exists = currentMessages.some((msg) => msg._id === message._id);
+          return exists ? currentMessages : [...currentMessages, message];
+        });
+      }
+      moveChatToTop(message.chatId, message);
+    };
+
+    socket.on("newMessage", handleNewMessage);
+
+    return () => {
+      socket.off("newMessage", handleNewMessage);
+    };
+  }, [socket, selectedUser]);
+
+  useEffect(() => {
     if (!socket || !selectedUser) return;
 
     const handleUserTyping = (data: any) => {
       console.log("Received user typing event:", data);
+      socket?.on("newMessage", (message) => {
+        console.log("Recieved new message:", message);
+
+        // if (selectedUser === message.chatId) {
+        //   setMessages((prev) => {
+        //     const currentMessages = prev || [];
+        //     const messageExists = currentMessages.some(
+        //       (msg:any) => msg._id === message._id
+        //     );
+        //     if()
+        //   });
+        // }
+      });
       if (data.chatId === selectedUser && data.userId !== loggedInUser?._id) {
         setIsTyping(true);
       }
@@ -226,21 +351,72 @@ const chatApp = () => {
     socket.on("userStopTyping", handleUserStopTyping);
 
     return () => {
-      socket.off("userTyping", handleUserTyping);
-      socket.off("userStopTyping", handleUserStopTyping);
+      socket?.off("userTyping", handleUserTyping);
+      socket?.off("messageSeen");
+      socket?.off("userStopTyping", handleUserStopTyping);
+      socket?.off("newMessage");
     };
-  }, [socket, selectedUser, loggedInUser?._id]);
+  }, [socket, selectedUser, loggedInUser?._id, setChats]);
+
+  useEffect(() => {
+    if (selectedUser && socket && messages && loggedInUser) {
+      // Get all messages from other user that are not yet seen
+      const unseenMessages = messages.filter(
+        (msg) => !msg.seen && msg.senderId !== loggedInUser._id
+      );
+
+      const unseenMessageIds = unseenMessages.map((msg) => msg._id);
+
+      if (unseenMessageIds.length > 0) {
+        socket.on("messageSeen", (data) => {
+          if (selectedUser === data.chatId) {
+            setMessages((prev) => {
+              if (!prev) return null;
+              return prev.map((msg) => {
+                if (
+                  msg.sender === loggedInUser?._id &&
+                  data.messageIds &&
+                  data.messageIds.includes(msg._id)
+                ) {
+                  return {
+                    ...msg,
+                    seen: true,
+                    seenAt: new Date().toISOString(),
+                  };
+                } else if (
+                  msg.sender === loggedInUser?._id &&
+                  !data.messageIds
+                ) {
+                  return {
+                    ...msg,
+                    seen: true,
+                    seenAt: new Date().toISOString(),
+                  };
+                }
+                return msg;
+              });
+            });
+          }
+        });
+      }
+    }
+  }, [selectedUser, socket, messages, loggedInUser]);
+
   useEffect(() => {
     if (selectedUser && socket) {
       // Clean up previous chat
       setMessages(null);
       setUser(null);
       setIsTyping(false);
+      resetUnseenCount(selectedUser);
 
       // Join new chat room
       socket.emit("joinChat", selectedUser);
       console.log(`Joining chat room: ${selectedUser}`);
-
+      socket.emit("messageSeen", {
+        chatId: selectedUser,
+        userId: loggedInUser?._id,
+      });
       // Fetch chat data
       fetchChat();
 

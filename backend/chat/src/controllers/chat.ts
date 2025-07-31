@@ -1,3 +1,4 @@
+import { getRecieverSocketId, io } from "../config/socket.js";
 import tryCatch from "../config/tryCatch.js";
 import { AuthenticatedRequest } from "../middlewares/isAuth.js";
 import { Chat } from "../models/chat.js";
@@ -148,12 +149,20 @@ export const sendMessage = tryCatch(async (req: AuthenticatedRequest, res) => {
   }
 
   //socket setup
+  const recieverSocketId = getRecieverSocketId(otherUserId.toString());
+  let isReciverInChatRoom = false;
 
+  if (recieverSocketId) {
+    const reciverSocket = io.sockets.sockets.get(recieverSocketId);
+    if (reciverSocket && reciverSocket.rooms.has(chatId)) {
+      isReciverInChatRoom = true;
+    }
+  }
   let messageData: any = {
     chatId: chatId,
     sender: senderId,
-    seen: false,
-    seenAt: undefined,
+    seen: isReciverInChatRoom,
+    seenAt: isReciverInChatRoom ? new Date() : undefined,
   };
 
   if (imageFile) {
@@ -187,7 +196,24 @@ export const sendMessage = tryCatch(async (req: AuthenticatedRequest, res) => {
   );
 
   //emit to sockets
+  io.to(chatId).emit("newMessage", savedMessage);
 
+  if (recieverSocketId) {
+    io.to(recieverSocketId).emit("newMessage", savedMessage);
+  }
+
+  const senderSocketId = getRecieverSocketId(senderId.toString());
+  if (senderSocketId) {
+    io.to(senderSocketId).emit("newMessage", savedMessage);
+  }
+
+  if (isReciverInChatRoom && senderSocketId) {
+    io.to(senderSocketId).emit("messagesSeen", {
+      chatId: chatId,
+      seenBy: otherUserId,
+      messageIds: [savedMessage._id],
+    });
+  }
   res.status(201).json({
     message: savedMessage,
     sender: senderId,
@@ -262,7 +288,17 @@ export const getMessagesByChat = tryCatch(
       }
 
       //socket work
+      if (messagesToMarkSeen.length > 0) {
+        const otherUserSocketId = getRecieverSocketId(otherUserId.toString());
 
+        if (otherUserSocketId) {
+          io.to(otherUserSocketId).emit("messagesSeen", {
+            chatId: chatId,
+            seenBy: userId,
+            messageIds: messagesToMarkSeen.map((msg) => msg._id),
+          });
+        }
+      }
       res.json({
         messages,
         user: data,

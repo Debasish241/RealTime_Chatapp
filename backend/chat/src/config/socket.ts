@@ -16,6 +16,10 @@ const io = new Server(server, {
 
 const userSocketMap: Record<string, string> = {};
 
+export const getRecieverSocketId = (recieverId: string): string | undefined => {
+  return userSocketMap[recieverId]; 
+};
+
 io.on("connection", (socket: Socket) => {
   console.log(`User connected: ${socket.id}`);
   const userId = socket.handshake.query.userId as string | undefined;
@@ -39,6 +43,17 @@ io.on("connection", (socket: Socket) => {
       userId: data.userId,
     });
   });
+
+
+  socket.on("messageSeen",(data)=>{
+    console.log(`User ${data.userId} has seen messages in chat ${data.chatId}`);
+    // Broadcast to all users in the chat room except the sender
+    socket.to(data.chatId).emit("messageSeen", {
+      chatId: data.chatId,
+      seenBy: data.userId,
+      messageIds: data.messageIds,
+    });
+  })
 
   socket.on("stopTyping", (data) => {
     console.log(`User ${data.userId} stopped typing in chat ${data.chatId}`);
