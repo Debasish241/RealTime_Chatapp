@@ -127,7 +127,6 @@ const Chatsidebar = ({
                         </span>
                         <div className="text-xs text-gray-400 mt-0.5 ">
                           {/* to show onlien offline text */}
-
                           {onlineUsers.includes(u._id) ? "Online" : "Offline"}
                         </div>
                       </div>

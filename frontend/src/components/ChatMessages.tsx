@@ -73,12 +73,10 @@ const ChatMessages = ({
                       )}
                       {e.text && <p className="mt-1">{e.text}</p>}
                     </div>
-                    
+
                     <div
                       className={`flex items-center gap-1 text-xs text-gray-400 ${
-                        isSentByMe 
-                          ? "justify-end pr-2" 
-                          : "justify-start pl-2"
+                        isSentByMe ? "justify-end pr-2" : "justify-start pl-2"
                       }`}
                     >
                       {isSentByMe ? (
@@ -92,7 +90,9 @@ const ChatMessages = ({
                               <div className="flex items-center gap-1 text-blue-400">
                                 <CheckCheck className="w-3 h-3" />
                                 {e.seenAt && (
-                                  <span>{moment(e.seenAt).format("hh:mm A")}</span>
+                                  <span>
+                                    {moment(e.seenAt).format("hh:mm A")}
+                                  </span>
                                 )}
                               </div>
                             ) : (

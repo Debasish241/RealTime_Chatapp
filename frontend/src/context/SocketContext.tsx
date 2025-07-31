@@ -12,7 +12,7 @@ import { chat_service, useAppData } from "./AppContext";
 
 interface SocketContextType {
   socket: Socket | null;
-  onlineUsers: string[];
+  onlineUsers: string[]; 
 }
 
 const SocketContext = createContext<SocketContextType>({
